@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#2f6f4e">
+  <meta name="description" content="A simple offline PWA that scales rice portions proportionally to distribute all cooked rice.">
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <title>Rice Portion Calculator</title>
+  <style>
+    :root { color-scheme: light; --bg:#f5f7f4; --card:#fff; --text:#18221c; --muted:#617067; --accent:#2f6f4e; --accent-dark:#24583e; --border:#dce5df; --error:#b3261e; }
+    * { box-sizing:border-box; }
+    body { margin:0; min-height:100vh; font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; background:linear-gradient(180deg,#edf5ef 0,#f8faf8 35%,var(--bg) 100%); color:var(--text); }
+    main { width:min(720px,100%); margin:0 auto; padding:24px 16px 40px; }
+    header { text-align:center; margin-bottom:20px; }
+    .logo { width:64px; height:64px; display:block; margin:0 auto 12px; }
+    h1 { font-size:clamp(1.8rem,7vw,2.5rem); line-height:1.1; margin:0 0 8px; letter-spacing:-.03em; }
+    .intro { color:var(--muted); margin:0 auto; max-width:560px; line-height:1.5; }
+    section { background:var(--card); border:1px solid var(--border); border-radius:20px; padding:18px; margin-top:14px; box-shadow:0 6px 24px rgba(31,52,40,.06); }
+    h2 { font-size:1.05rem; margin:0 0 14px; }
+    .grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+    label { display:block; font-weight:650; font-size:.92rem; }
+    input { width:100%; margin-top:7px; min-height:52px; border:2px solid var(--border); border-radius:13px; padding:12px 13px; font:inherit; font-size:1.05rem; background:#fbfdfb; color:var(--text); }
+    input:focus { outline:3px solid rgba(47,111,78,.18); border-color:var(--accent); }
+    .actions { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:16px; }
+    button { min-height:54px; border:0; border-radius:14px; padding:12px 16px; font:inherit; font-weight:750; font-size:1rem; cursor:pointer; touch-action:manipulation; }
+    #calculate { background:var(--accent); color:#fff; }
+    #calculate:active { background:var(--accent-dark); }
+    #reset { background:#e9efeb; color:var(--text); }
+    .error { color:var(--error); font-weight:650; margin:12px 0 0; line-height:1.4; }
+    .summary { display:flex; justify-content:space-between; gap:16px; padding:12px 0; border-bottom:1px solid var(--border); }
+    .summary:last-child { border-bottom:0; }
+    .value { font-weight:800; text-align:right; }
+    .person { margin-top:16px; }
+    .person:first-of-type { margin-top:4px; }
+    .person-title { display:flex; justify-content:space-between; gap:12px; align-items:baseline; margin-bottom:8px; }
+    .person-title strong { font-size:1.05rem; }
+    .person-title span { color:var(--muted); font-size:.9rem; }
+    ol { margin:0; padding-left:28px; }
+    li { padding:9px 4px; font-weight:700; }
+    .note { color:var(--muted); font-size:.9rem; line-height:1.5; margin:12px 0 0; }
+    [hidden] { display:none !important; }
+    @media (max-width:520px) { .grid { grid-template-columns:1fr; } main { padding-top:18px; } section { border-radius:17px; } }
+  </style>
+</head>
+<body>
+<main>
+  <header>
+    <img class="logo" src="icons/icon-192.png" alt="" width="64" height="64">
+    <h1>Rice Portion Calculator</h1>
+    <p class="intro">Enter your cooked rice and the portions you want. Every meal is scaled by the same factor so all the rice is distributed while preserving your requested ratio.</p>
+  </header>
+
+  <form id="calculator" novalidate>
+    <section>
+      <h2>Cooked rice</h2>
+      <label for="totalRice">Total cooked rice (g)
+        <input id="totalRice" name="totalRice" type="number" inputmode="decimal" min="0.01" step="0.1" placeholder="e.g. 1000" required>
+      </label>
+    </section>
+
+    <section>
+      <h2>Person 1</h2>
+      <div class="grid">
+        <label for="p1grams">Grams per meal
+          <input id="p1grams" name="p1grams" type="number" inputmode="decimal" min="0.01" step="0.1" placeholder="e.g. 150" required>
+        </label>
+        <label for="p1meals">Number of meals
+          <input id="p1meals" name="p1meals" type="number" inputmode="numeric" min="1" step="1" placeholder="e.g. 2" required>
+        </label>
+      </div>
+    </section>
+
+    <section>
+      <h2>Person 2</h2>
+      <div class="grid">
+        <label for="p2grams">Grams per meal
+          <input id="p2grams" name="p2grams" type="number" inputmode="decimal" min="0.01" step="0.1" placeholder="e.g. 100" required>
+        </label>
+        <label for="p2meals">Number of meals
+          <input id="p2meals" name="p2meals" type="number" inputmode="numeric" min="1" step="1" placeholder="e.g. 2" required>
+        </label>
+      </div>
+      <p id="error" class="error" role="alert" hidden></p>
+      <div class="actions">
+        <button id="calculate" type="submit">Calculate portions</button>
+        <button id="reset" type="button">Reset</button>
+      </div>
+    </section>
+  </form>
+
+  <section id="results" aria-live="polite" hidden>
+    <h2>Result</h2>
+    <div class="summary"><span>Total cooked rice</span><span class="value" id="resultTotal"></span></div>
+    <div class="summary"><span>Requested total</span><span class="value" id="requestedTotal"></span></div>
+    <div class="summary"><span>Scaling factor</span><span class="value" id="factor"></span></div>
+    <div id="people"></div>
+    <p class="note">Each requested meal is multiplied by the same scaling factor. This keeps the Person 1 : Person 2 ratio unchanged while using all cooked rice.</p>
+  </section>
+</main>
+
+<script>
+(() => {
+  const form = document.getElementById('calculator');
+  const error = document.getElementById('error');
+  const results = document.getElementById('results');
+  const people = document.getElementById('people');
+
+  const val = id => Number(document.getElementById(id).value);
+  const fmt = n => new Intl.NumberFormat(undefined, { maximumFractionDigits: 1 }).format(n);
+
+  form.addEventListener('submit', e => {
+    e.preventDefault();
+    error.hidden = true;
+    const total = val('totalRice');
+    const p1g = val('p1grams'), p1m = val('p1meals');
+    const p2g = val('p2grams'), p2m = val('p2meals');
+
+    if (![total,p1g,p1m,p2g,p2m].every(Number.isFinite) ||
+        total <= 0 || p1g <= 0 || p1m <= 0 || p2g <= 0 || p2m <= 0) {
+      error.textContent = 'Please enter positive values in every field.';
+      error.hidden = false; results.hidden = true; return;
+    }
+    if (!Number.isInteger(p1m) || !Number.isInteger(p2m)) {
+      error.textContent = 'Number of meals must be a whole number (at least 1).';
+      error.hidden = false; results.hidden = true; return;
+    }
+
+    const requested = p1g*p1m + p2g*p2m;
+    if (requested <= 0) {
+      error.textContent = 'The requested total must be greater than zero.';
+      error.hidden = false; results.hidden = true; return;
+    }
+
+    const factor = total / requested;
+    const p1actual = p1g * factor;
+    const p2actual = p2g * factor;
+
+    document.getElementById('resultTotal').textContent = `${fmt(total)} g`;
+    document.getElementById('requestedTotal').textContent = `${fmt(requested)} g`;
+    document.getElementById('factor').textContent = factor.toFixed(4).replace(/0+$/,'').replace(/\.$/,'');
+    people.innerHTML = '';
+
+    [
+      ['Person 1', p1actual, p1m],
+      ['Person 2', p2actual, p2m]
+    ].forEach(([name, grams, meals]) => {
+      const wrapper = document.createElement('div');
+      wrapper.className = 'person';
+      const title = document.createElement('div');
+      title.className = 'person-title';
+      title.innerHTML = `<strong>${name}</strong><span>${fmt(grams)} g per meal</span>`;
+      const list = document.createElement('ol');
+      for (let i=1; i<=meals; i++) {
+        const li = document.createElement('li');
+        li.textContent = `Meal ${i}: ${fmt(grams)} g`;
+        list.appendChild(li);
+      }
+      wrapper.append(title, list);
+      people.appendChild(wrapper);
+    });
+
+    results.hidden = false;
+    results.scrollIntoView({behavior:'smooth', block:'start'});
+  });
+
+  document.getElementById('reset').addEventListener('click', () => {
+    form.reset(); error.hidden = true; results.hidden = true;
+    document.getElementById('totalRice').focus();
+  });
+
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => navigator.serviceWorker.register('./service-worker.js').catch(() => {}));
+  }
+})();
+</script>
+</body>
+</html>
